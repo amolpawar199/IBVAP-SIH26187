@@ -1,149 +1,256 @@
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+import os
 import sqlite3
 
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
+
+
+# ==========================================
+# PROJECT ROOT
+# ==========================================
+
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(
+        os.path.abspath(__file__)
+    )
+)
+
+
+# ==========================================
+# DATABASE PATH
+# ==========================================
+
+DB_PATH = os.path.join(
+    PROJECT_ROOT,
+    "video",
+    "border_alerts.db"
+)
+
+
+# ==========================================
+# FRONTEND PATH
+# ==========================================
+
+FRONTEND_PATH = os.path.join(
+    PROJECT_ROOT,
+    "frontend"
+)
+
+DASHBOARD_PATH = os.path.join(
+    FRONTEND_PATH,
+    "dashboard.html"
+)
+
+
+# ==========================================
+# FASTAPI
+# ==========================================
+
 app = FastAPI(
-    title="Border Surveillance AI",
-    description="AI-Based Intelligent Video Analytics Platform",
+    title="Border Surveillance Monitoring API",
+    description="AI-Based Border Surveillance Monitoring System",
     version="1.0"
 )
 
 
+# ==========================================
+# CORS
+# ==========================================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+# ==========================================
+# HOME
+# ==========================================
+
 @app.get("/")
 def home():
+
     return {
         "system": "Border Surveillance AI",
-        "status": "Online"
+        "status": "ONLINE",
+        "database": "CONNECTED",
+        "api": "ACTIVE"
     }
 
 
-@app.get("/health")
-def health():
-    return {
-        "status": "healthy"
-    }
+# ==========================================
+# DASHBOARD
+# ==========================================
+
+@app.get(
+    "/dashboard",
+    response_class=HTMLResponse
+)
+def dashboard():
+
+    if not os.path.exists(DASHBOARD_PATH):
+
+        return HTMLResponse(
+            content="""
+            <h1>Dashboard file not found</h1>
+            <p>Check frontend/dashboard.html</p>
+            """,
+            status_code=404
+        )
+
+    with open(
+        DASHBOARD_PATH,
+        "r",
+        encoding="utf-8"
+    ) as file:
+
+        return file.read()
 
 
-@app.get("/events")
-def get_events():
+# ==========================================
+# GET ALL ALERTS
+# ==========================================
 
-    connection = sqlite3.connect("../ai/border_surveillance.db")
-    connection.row_factory = sqlite3.Row
+@app.get("/alerts")
+def get_alerts():
 
-    cursor = connection.cursor()
+    if not os.path.exists(DB_PATH):
+
+        return {
+            "count": 0,
+            "alerts": [],
+            "message": "Database not found"
+        }
+
+
+    conn = sqlite3.connect(DB_PATH)
+
+    conn.row_factory = sqlite3.Row
+
+    cursor = conn.cursor()
+
 
     cursor.execute("""
         SELECT
             id,
-            person_id,
+            event_id,
             camera_id,
             event_type,
-            severity,
-            timestamp
-        FROM events
+            timestamp,
+            confidence,
+            zone,
+            status,
+            event_hash
+        FROM alerts
         ORDER BY id DESC
     """)
 
-    events = cursor.fetchall()
-    connection.close()
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+
+    alerts = [
+        dict(row)
+        for row in rows
+    ]
+
 
     return {
-        "total_events": len(events),
-        "events": [dict(event) for event in events]
+        "count": len(alerts),
+        "alerts": alerts
     }
 
 
-@app.get("/events/table", response_class=HTMLResponse)
-def events_table():
+# ==========================================
+# LATEST ALERT
+# ==========================================
 
-    connection = sqlite3.connect("../ai/border_surveillance.db")
-    cursor = connection.cursor()
+@app.get("/alerts/latest")
+def latest_alert():
+
+    if not os.path.exists(DB_PATH):
+
+        return {
+            "message": "Database not found"
+        }
+
+
+    conn = sqlite3.connect(DB_PATH)
+
+    conn.row_factory = sqlite3.Row
+
+    cursor = conn.cursor()
+
 
     cursor.execute("""
         SELECT
             id,
-            person_id,
+            event_id,
             camera_id,
             event_type,
-            severity,
-            timestamp
-        FROM events
+            timestamp,
+            confidence,
+            zone,
+            status,
+            event_hash
+        FROM alerts
         ORDER BY id DESC
+        LIMIT 1
     """)
 
-    events = cursor.fetchall()
-    connection.close()
 
-    html = """
-    <html>
-    <head>
-        <title>Border Surveillance - Events</title>
-        <style>
-            body {
-                font-family: Arial;
-                margin: 40px;
-                background: #f4f4f4;
-            }
+    row = cursor.fetchone()
 
-            h1 {
-                text-align: center;
-            }
+    conn.close()
 
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                background: white;
-            }
 
-            th, td {
-                padding: 12px;
-                border: 1px solid #ddd;
-                text-align: center;
-            }
+    if row is None:
 
-            th {
-                background: #222;
-                color: white;
-            }
+        return {
+            "message": "No alerts found"
+        }
 
-            tr:nth-child(even) {
-                background: #f2f2f2;
-            }
-        </style>
-    </head>
 
-    <body>
+    return dict(row)
 
-        <h1>Border Surveillance Event Log</h1>
 
-        <table>
-            <tr>
-                <th>ID</th>
-                <th>Person ID</th>
-                <th>Camera</th>
-                <th>Event Type</th>
-                <th>Severity</th>
-                <th>Timestamp</th>
-            </tr>
-    """
+# ==========================================
+# SYSTEM STATUS
+# ==========================================
 
-    for event in events:
-        html += f"""
-            <tr>
-                <td>{event[0]}</td>
-                <td>Person #{event[1]}</td>
-                <td>{event[2]}</td>
-                <td>{event[3]}</td>
-                <td>{event[4]}</td>
-                <td>{event[5]}</td>
-            </tr>
-        """
+@app.get("/status")
+def system_status():
 
-    html += """
-        </table>
+    database_status = (
+        "CONNECTED"
+        if os.path.exists(DB_PATH)
+        else "NOT FOUND"
+    )
 
-    </body>
-    </html>
-    """
 
-    return html
+    return {
+
+        "system": "Border Surveillance AI",
+
+        "status": "ONLINE",
+
+        "ai_detection": "ACTIVE",
+
+        "camera": "CAM-01",
+
+        "database": database_status,
+
+        "sha256": "ENABLED",
+
+        "blockchain": "ACTIVE",
+
+        "verification": "ENABLED"
+
+    }
+    

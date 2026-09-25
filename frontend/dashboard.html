@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>
+        Border Surveillance AI
+    </title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+
+            margin: 0;
+
+            font-family: Arial, sans-serif;
+
+            background: #080c11;
+
+            color: white;
+        }
+
+
+        header {
+
+            padding: 22px 30px;
+
+            background: #111820;
+
+            border-bottom: 1px solid #26313d;
+        }
+
+
+        header h1 {
+
+            margin: 0;
+
+            font-size: 28px;
+        }
+
+
+        header p {
+
+            margin: 7px 0 0;
+
+            color: #9aa7b5;
+        }
+
+
+        .container {
+
+            padding: 25px;
+        }
+
+
+        .cards {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(4, 1fr);
+
+            gap: 20px;
+
+            margin-bottom: 25px;
+        }
+
+
+        .card {
+
+            background: #151d26;
+
+            padding: 22px;
+
+            border-radius: 12px;
+
+            border: 1px solid #26313d;
+        }
+
+
+        .card h3 {
+
+            margin: 0 0 12px;
+
+            color: #9aa7b5;
+
+            font-size: 15px;
+        }
+
+
+        .value {
+
+            font-size: 25px;
+
+            font-weight: bold;
+        }
+
+
+        .online {
+
+            color: #00ff88;
+        }
+
+
+        .alert {
+
+            color: #ff5252;
+        }
+
+
+        .table-box {
+
+            background: #151d26;
+
+            padding: 22px;
+
+            border-radius: 12px;
+
+            border: 1px solid #26313d;
+
+            overflow-x: auto;
+        }
+
+
+        .table-box h2 {
+
+            margin-top: 0;
+        }
+
+
+        table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+            min-width: 900px;
+        }
+
+
+        th,
+        td {
+
+            padding: 14px;
+
+            text-align: left;
+
+            border-bottom: 1px solid #26313d;
+        }
+
+
+        th {
+
+            color: #9aa7b5;
+        }
+
+
+        .high {
+
+            color: #ff5252;
+
+            font-weight: bold;
+        }
+
+
+        .hash {
+
+            max-width: 180px;
+
+            overflow: hidden;
+
+            text-overflow: ellipsis;
+
+            white-space: nowrap;
+        }
+
+
+        .refresh {
+
+            margin-top: 15px;
+
+            color: #7f8c9b;
+
+            font-size: 13px;
+        }
+
+
+        @media(max-width: 900px) {
+
+            .cards {
+
+                grid-template-columns:
+                    1fr 1fr;
+            }
+        }
+
+
+        @media(max-width: 550px) {
+
+            .cards {
+
+                grid-template-columns:
+                    1fr;
+            }
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<header>
+
+    <h1>
+        🛡 Border Surveillance AI
+    </h1>
+
+    <p>
+        Real-Time Monitoring & Security Dashboard
+    </p>
+
+</header>
+
+
+<div class="container">
+
+
+    <!-- ================================= -->
+    <!-- STATUS CARDS -->
+    <!-- ================================= -->
+
+    <div class="cards">
+
+
+        <div class="card">
+
+            <h3>
+                SYSTEM STATUS
+            </h3>
+
+            <div
+                id="systemStatus"
+                class="value online">
+
+                ONLINE
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <h3>
+                CAMERA
+            </h3>
+
+            <div
+                id="camera"
+                class="value">
+
+                CAM-01
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <h3>
+                TOTAL ALERTS
+            </h3>
+
+            <div
+                id="alertCount"
+                class="value alert">
+
+                0
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <h3>
+                BLOCKCHAIN
+            </h3>
+
+            <div
+                id="blockchain"
+                class="value online">
+
+                ACTIVE
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+
+
+    <!-- ================================= -->
+    <!-- ALERT TABLE -->
+    <!-- ================================= -->
+
+    <div class="table-box">
+
+
+        <h2>
+            Security Alerts
+        </h2>
+
+
+        <table>
+
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Event ID
+                    </th>
+
+                    <th>
+                        Camera
+                    </th>
+
+                    <th>
+                        Event
+                    </th>
+
+                    <th>
+                        Confidence
+                    </th>
+
+                    <th>
+                        Zone
+                    </th>
+
+                    <th>
+                        Status
+                    </th>
+
+                    <th>
+                        Timestamp
+                    </th>
+
+                    <th>
+                        SHA-256
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody
+                id="alertTable">
+
+            </tbody>
+
+
+        </table>
+
+
+        <div class="refresh">
+
+            Dashboard automatically refreshes
+            every 3 seconds.
+
+        </div>
+
+
+    </div>
+
+
+</div>
+
+
+
+<script>
+
+
+// =========================================
+// API ADDRESS
+// =========================================
+
+const API = "";
+
+
+// =========================================
+// LOAD SYSTEM STATUS
+// =========================================
+
+async function loadStatus() {
+
+    try {
+
+        const response =
+            await fetch(
+                API + "/status"
+            );
+
+
+        const data =
+            await response.json();
+
+
+        document.getElementById(
+            "systemStatus"
+        ).innerText =
+            data.status;
+
+
+        document.getElementById(
+            "camera"
+        ).innerText =
+            data.camera;
+
+
+        document.getElementById(
+            "blockchain"
+        ).innerText =
+            data.blockchain;
+
+
+    }
+
+    catch (error) {
+
+        console.log(
+            "Status error:",
+            error
+        );
+
+
+        document.getElementById(
+            "systemStatus"
+        ).innerText =
+            "OFFLINE";
+
+    }
+
+}
+
+
+
+// =========================================
+// LOAD ALERTS
+// =========================================
+
+async function loadAlerts() {
+
+    try {
+
+        const response =
+            await fetch(
+                API + "/alerts"
+            );
+
+
+        const data =
+            await response.json();
+
+
+        document.getElementById(
+            "alertCount"
+        ).innerText =
+            data.count;
+
+
+        const table =
+            document.getElementById(
+                "alertTable"
+            );
+
+
+        table.innerHTML = "";
+
+
+        data.alerts.forEach(
+            alert => {
+
+
+                const row =
+                    document.createElement(
+                        "tr"
+                    );
+
+
+                const confidence =
+                    alert.confidence !== null
+                    ?
+                    (
+                        alert.confidence * 100
+                    ).toFixed(1) + "%"
+                    :
+                    "-";
+
+
+                row.innerHTML = `
+
+                    <td>
+                        ${alert.event_id}
+                    </td>
+
+                    <td>
+                        ${alert.camera_id}
+                    </td>
+
+                    <td>
+                        ${alert.event_type}
+                    </td>
+
+                    <td>
+                        ${confidence}
+                    </td>
+
+                    <td>
+                        ${alert.zone}
+                    </td>
+
+                    <td class="high">
+                        ${alert.status}
+                    </td>
+
+                    <td>
+                        ${alert.timestamp}
+                    </td>
+
+                    <td class="hash"
+                        title="${alert.event_hash}">
+                        ${alert.event_hash}
+                    </td>
+
+                `;
+
+
+                table.appendChild(row);
+
+            }
+        );
+
+
+    }
+
+    catch (error) {
+
+        console.log(
+            "Alert loading error:",
+            error
+        );
+
+    }
+
+}
+
+
+
+// =========================================
+// START DASHBOARD
+// =========================================
+
+loadStatus();
+
+loadAlerts();
+
+
+// =========================================
+// AUTO REFRESH
+// =========================================
+
+setInterval(
+    loadStatus,
+    3000
+);
+
+
+setInterval(
+    loadAlerts,
+    3000
+);
+
+
+</script>
+
+
+</body>
+
+</html> 
